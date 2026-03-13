@@ -16,31 +16,6 @@ LUCI_TITLE:=OpenClaw AI 网关 LuCI 管理插件
 LUCI_DEPENDS:=+luci-compat +luci-base +curl +openssl-util +script-utils +tar
 LUCI_PKGARCH:=all
 
-# 优先使用 luci.mk (feeds 模式), 不可用时回退 package.mk
-ifeq ($(wildcard $(TOPDIR)/feeds/luci/luci.mk),)
-
-  include $(INCLUDE_DIR)/package.mk
-
-  define Package/$(PKG_NAME)
-    SECTION:=luci
-    CATEGORY:=LuCI
-    SUBMENU:=3. Applications
-    TITLE:=$(LUCI_TITLE)
-    DEPENDS:=$(LUCI_DEPENDS)
-    PKGARCH:=all
-  endef
-
-  define Package/$(PKG_NAME)/description
-    OpenClaw AI Gateway 的 LuCI 管理插件。
-    支持 12+ AI 模型提供商和 Telegram/Discord 等多种消息渠道。
-  endef
-
-else
-
-  include $(TOPDIR)/feeds/luci/luci.mk
-
-endif
-
 define Package/$(PKG_NAME)/conffiles
 /etc/config/openclaw
 endef
@@ -90,4 +65,35 @@ define Package/$(PKG_NAME)/postrm
 }
 endef
 
-$(eval $(call BuildPackage,$(PKG_NAME)))
+# 根据环境选择正确的包含方式
+ifeq ($(wildcard $(TOPDIR)/feeds/luci/luci.mk),)
+  # 直接放入 package/ 目录的方式
+  include $(INCLUDE_DIR)/package.mk
+  
+  define Package/$(PKG_NAME)
+    SECTION:=luci
+    CATEGORY:=LuCI
+    SUBMENU:=3. Applications
+    TITLE:=$(LUCI_TITLE)
+    DEPENDS:=$(LUCI_DEPENDS)
+    PKGARCH:=all
+  endef
+  
+  define Package/$(PKG_NAME)/description
+    OpenClaw AI Gateway 的 LuCI 管理插件。
+    支持 12+ AI 模型提供商和 Telegram/Discord 等多种消息渠道。
+  endef
+  
+  $(eval $(call BuildPackage,$(PKG_NAME)))
+else
+  # 作为 feeds 源的方式
+  include $(TOPDIR)/feeds/luci/luci.mk
+  
+  # 对于 luci.mk 方式，需要定义这些变量
+  LUCI_APPLICATION:=$(PKG_NAME)
+  LUCI_TITLE:=$(LUCI_TITLE)
+  LUCI_DEPENDS:=$(LUCI_DEPENDS)
+  LUCI_PKGARCH:=$(LUCI_PKGARCH)
+  
+  # 由 luci.mk 内部调用 BuildPackage
+endif
